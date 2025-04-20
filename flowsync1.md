@@ -4,9 +4,9 @@ Se desea asociar la fase con relación al porcentaje.
 
 Objetivos:
 
+- Lenguaje de descripción de cruces, fuentes.
 - Aritmética de eventos, como los AER (Adress event representation) de los spikes
 - Que el reparto se ajuste a la densidad de vehículos
-- Lenguaje de descripción de cruces, fuentes.
 
 Desarrollo:
 - Pseudogradiente en una PINN 100% física.
@@ -159,7 +159,7 @@ Luego un problema secundario es la velocidad llegado a dicha saturación.
 
 --- 
 
-Si la saturación responde o no a la distancia de seguridad se lo podemos preguntar a Paco León. 
+¿ Si la saturación responde o no a la distancia de seguridad se lo podemos preguntar.
 El tiempo extra de compactación se puede ejecutar en lote, dado que es un incremento de llegada al extremo y solo se ejecuta cuando hay capacidad de admitir un nuevo coche. 
 Me pregunto si hay fórmula empirica. 
 Hasta que esto no se modele nunca tendremos el comportamiento de los detectores modelados.
@@ -214,12 +214,164 @@ Ejecuta los elementos con saturación.
 
 ---
 
+Al no admitir nuevas entradas eso explicaría la degeneración y los saltos de la envolvente que calculaba.
+
+Sería curioso ver intensidad vs ocupación en los detectores.
+
+Y verificar la salida de curvas características.
+
+---
+
 Si se usa el coche saliente para establecer la velocidad el problema es que el nuevo coche no va a superar dicho tiempo.
 A menos que si podría haber salido cuente.
-El problema es la velocidad mínima.
-Por densidad se puede deducir, pero no caigo ahora en la fórmula.
+
 
 También podemos no poner el momento de llegada hasta sacar a un coche. 
 
-Esto modelaría las velocidades ilegales, también.
+Esto modelaría las velocidades ilegales. Sabríamos el tiempo que la sincronizacion semafórica te permite tener una velocidad por encima del límite establecido. 
+¿ Preguntar si esto es deseable, si es un criterio de optimización a considerar también.
+
+
+
+El problema es la velocidad mínima. Por densidad se puede deducir, pero no caigo ahora en la fórmula.
+
+![](assets/17450488203954.jpg)
+
+Se puede aplicar la unión con el extremo 0,0 y a partir de no asegurar la distancia mínima no se admite la entrada.
+Una velocidad inferior a 10 Km/h hace que la carretera no admita nuevas entradas.
+
+Tampoco se pueden admitir mas entradas si no se respeta la distancia mínima de seguridad. 
+
+Se me ocurre que es posible un puntero circular. 
+Y que dichos punteros pueden ser a vehículos. 
+Ya que el tiempo es algo sobrevenido.
+Incluso los coches tienen un anillo de momentos de entrada. 
+
+Se puede empezar por implementar el llenado hasta capacidad.
+Se llenaría hasta la capacidad máxima. Y luego al sacar el último vehículo sabemos el promedio de velocidad y por tanto la ocupación de los detectores.
+
+
+No sería un simulador al uso ya que para ver la ejecución se debe haber simulado primero.
+
+Orden de programación:
+- Un ejecutor, FlowSync con elementos autoconscientes del orden que ocupan.
+- Mecanismo que para de insertar y activa al output.
+    - ¿Si son dos salidas cual?
+    - Se para en llenado ¿a que velocidad?
+- Simular varios cambios de ritmos.
+- Curvas de detectores.
+- Registrar en vehículos los momentos de cambios de roads.
+- Usar en road solo punteros a vehículos, sin tiempos.
+- Animar la simulación.
+
+---
+
+En el FlowSync, el sistema operativo, tengo dudas de cuando la entrada se pone el primero de la lista.
+
+Empieza la entrada, satura una carretera y se intercambia.
+
+Cuando termina de ejecutarse el cruce se puede intercambiar por la salida o por la entrada.
+
+Si se ha saturado la salida esta.
+Si no se ha saturado, cambia por la entrada.
+
+Podemos simular un detector por road. 
+Intuyes que la velocidad es deducible.
+
+Una posibilidad mas sencilla es una ejecucion circular. 
+Si se colorea un grafo, se podría ejecutar en paralelo por colores.
+
+La intersección para cuando una carretera de salida se satura o cuando pides y está vacía.
+
+---
+
+La intersección termina:
+- Cuando get no quedan mas. En este caso no sé como proceder. Tienes que parar el tiempo con el de la entrada del último elemento. Pero con el get no se sabe si es el último o quedan mas. A menos que devuelvas dos cosas.
+- Cuando la road interna se llena. La vacía.
+- Cuando la salida se satura.
+
+Una de las cosas malas es que pasa uno cuando no debería.
+Está lleno la cola.
+
+El tiempo no debe cambiar.
+
+---
+
+El tiempo de la intercepción adelanta a un get que no se ha ejecutado para dicho momento.
+¿Qué se debería hacer?
+¿Cómo consolidamos la transferencia estandar para no tener errores?
+¿Sacar factor común entre las dos transferencias de carretera?
+¿Cómo evitas que la intercepción se quede colgada?
+
+Supongamos que no podemos hacer un get sobre un elemento que no está actualizado.
+Quiero poner un modo de parada.
+Lo mismo que hicimos un error raise, en algo, en el get también.
+Hay que diseñar una forma de que el generador actualice la fecha válida de una carretera.
+
+Si se hace un push, sin vehículo se interpreta como que se puede ejecutar un get.
+
+¿Al freeOutputTime le afecta el waiting?
+
+Estoy haciendo coherente los tiempos.
+
+El freeOutputTime es el tiempo que tarda en quedarse la calle libre en circustanciaas ideales.
+Si hay un waiting, dicho tiempo aumenta.
+
+Vamos a hacer una traza en el coche. No me creo que nos vayamos a 4300 segundos si solo hay hasta 3600.
+
+----
+
+Haz el sensor de una carretera a partir de los coches.
+
+Se me quedan 10 coches sin salir.
+Solucionado, al final cierro con null.
+
+---
+
+Creo que estoy metiendo mas coches de la capacidad.
+La razón es que los saco. Y al vaciar los del futuro como el control es por longitud se satura por encima de su ocupación.
+Lo ideal es controlar la ocupación en la entrada y cuando sea próximo a ...
+Pero si introduzco un coche cada 2 segundos que throuput da la intersección.
+
+Imagina que los coches entran a 10km/h, y calcula la ocupación.
+
+147 coches deberían pasar y van desde 119.
+Aunque los coches son ...
+Porque el coche no entra hasta que no se abandona por completo.
+Entonces el sistema se satura.
+
+El problema está en el cruce. No entra el siguiente tras el otro, se espera a que abandone el cruce, luego la capacidad de transporte es menor que una entrada cada 2 segundos.
+
+¿Confirmar el cruce, que no tiene la capacidad de 30Km/h porque se tiene que despejar, para que entre el siguiente.
+
+
+
+---
+- experimento senoidal.
+- Te quedas el top 33 y 5.
+
+147 coches en linea.
+
+58*2=116
+
+90 ciclo
+112
+105
+
+112 ciclo
+116
+106
+
+------
+
+[] Mejor control de ocupación en el carril, saturación.
+Al sacar uno, le calcula la velocidad media y por tanto la distancia de seguridad.
+Mínimo 10 km/h
+
+freeOutputTime es el que modera la entrada.
+El problema es que queueLength incluye la longitud de vehículo.
+Me interesa la distancia de separación y eso supone un cambio total del programa.
+
+
+
 
