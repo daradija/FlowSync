@@ -81,7 +81,7 @@ class Road:
         self.queueLength=0
 
     def safetyDistance(self):
-        s= max(3, (self.velocity-self.lastVelocity)/50*(28-4.2))
+        s= max(0.75, (self.velocity-self.lastVelocity)/50*(28-4.2))
         return s
 
     def velocityms(self):
@@ -103,7 +103,8 @@ class Road:
 
         if vehicle!=None:
             vehicle.log.append((time,"push",self.name))
-            self.freeInputTime=time+vehicle.totalDistance(self.velocity)/self.velocityms()
+            #self.freeInputTime=time+vehicle.totalDistance(self.velocity)/self.velocityms()
+            self.freeInputTime=time+(vehicle.length+self.safetyDistance())/self.velocityms()
             # A que hora sale cabeza y cola 
             self.queue.append((time+self.length/self.velocityms(), vehicle))
             self.queueLength+=vehicle.length
@@ -130,7 +131,7 @@ class Road:
             q=self.queue[0]
             if time_to==None or q[0]+waiting <time_to:
                 self.queue.pop(0)
-                self.lastVelocity=0.9*self.lastVelocity+0.1*self.length/(q[0]+waiting-q[1].log[-1][0])*3.6
+                self.lastVelocity=0.8*self.lastVelocity+0.2*self.length/(q[0]+waiting-q[1].log[-1][0])*3.6
                 print(self.name,"lastVelocity",self.lastVelocity)
                 q[1].log.append((q[0]+waiting,"get",self.name))
                 self.queueLength-=q[1].length
@@ -207,10 +208,34 @@ class Sensor:
         intervalo33=intervalo[:top33]
 
         # promedia intensidad
-        print(f"Intensidad top5%: {sum([x[0] for x in intervalo5])/top5:.0f}({sum([x[1] for x in intervalo5]):.0f}%)")
-        print(f"Intensidad top33%: {sum([x[0] for x in intervalo33])/top33:.0f}({sum([x[1] for x in intervalo33]):.0f}%)")
-        print()
+        print(f"Intensidad top5%: {sum([x[0] for x in intervalo5])/top5:.0f}({sum([x[1] for x in intervalo5])/top5*100:.0f}%)")
+        print(f"Intensidad top33%: {sum([x[0] for x in intervalo33])/top33:.0f}({sum([x[1] for x in intervalo33])/top33*100:.0f}%)")
 
+
+        # matplotlib intervalo
+        import matplotlib.pyplot as plt
+        
+        # Extract data for plotting
+        intensidades = [x[0] for x in intervalo]
+        ocupaciones = [x[1]*100 for x in intervalo]  # Convert to percentage
+        
+        plt.figure(figsize=(10, 6))
+        plt.scatter(ocupaciones, intensidades, alpha=0.7)
+        plt.xlabel('Ocupación (%)')
+        plt.ylabel('Intensidad (vehículos/intervalo)')
+        plt.title('Relación entre Ocupación e Intensidad')
+        plt.grid(True, linestyle='--', alpha=0.7)
+        
+        # Add trend line
+        # if len(intensidades) > 1:
+        #     z = np.polyfit(ocupaciones, intensidades, 1)
+        #     p = np.poly1d(z)
+        #     plt.plot(ocupaciones, p(ocupaciones), "r--", alpha=0.8)
+            
+        plt.tight_layout()
+        plt.show()
+
+        print()
 
 def main():
     road0= Road(100, 50,name="road0")
@@ -255,7 +280,8 @@ def main():
         time+= vehicle.totalDistance(road_intersection.velocity)/road_intersection.velocityms()
         return r
     
-    s=Sensor(road0)
+    #s=Sensor(road0)
+    s=Sensor(road1)
     #s=Sensor(intersection.phases[0].io[0][2])
 
     def remover():
